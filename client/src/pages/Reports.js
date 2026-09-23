@@ -1,68 +1,37 @@
-import React, { useState, useEffect } from 'react';
-import { getCategoryStats } from '../services/api';
-import { BarChart3, PieChart, IndianRupee, DollarSign } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { BarChart3, Receipt, ShoppingBasket } from 'lucide-react';
+import { getCategoryStats, getSummary } from '../services/api';
+
+const money = (v) => `R ${Number(v || 0).toFixed(2)}`;
 
 const Reports = () => {
-    const [stats, setStats] = useState([]);
-    const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState([]);
+  const [summary, setSummary] = useState({ totalSpent:0, tripCount:0, itemCount:0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-    useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const { data } = await getCategoryStats();
-                setStats(data);
-                setLoading(false);
-            } catch (err) {
-                console.error("Error fetching reports", err);
-                setLoading(false);
-            }
-        };
-        fetchStats();
-    }, []);
+  useEffect(() => {
+    Promise.all([getCategoryStats(), getSummary()])
+      .then(([category, totals]) => { setStats(category.data); setSummary(totals.data); })
+      .catch(err => setError(err.response?.data?.message || 'Could not load reports.'))
+      .finally(() => setLoading(false));
+  }, []);
 
-    if (loading) return <p style={{ textAlign: 'center', padding: '50px' }}>Analyzing your spending...</p>;
+  if (loading) return <div className="empty">Preparing your spending report…</div>;
+  const grandTotal = Number(summary.totalSpent || 0);
 
-    const grandTotal = stats.reduce((acc, curr) => acc + curr.totalAmount, 0);
-
-    return (
-        <div style={{ padding: '20px', maxWidth: '900px', margin: '0 auto' }}>
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <BarChart3 color="#28a745" /> Spending Analytics
-            </h2>
-
-            {/* Summary Card */}
-            <div style={{ background: '#f0fdf4', padding: '20px', borderRadius: '12px', border: '1px solid #bbf7d0', marginBottom: '30px' }}>
-                <p style={{ margin: 0, color: '#166534', fontSize: '1.1rem' }}>Total Life-Time Spending</p>
-                <h1 style={{ margin: '5px 0', color: '#14532d' }}>${grandTotal.toFixed(2)}</h1>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
-                {stats.length > 0 ? stats.map((stat) => (
-                    <div key={stat._id} style={{ border: '1px solid #eee', padding: '20px', borderRadius: '10px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                                {stat._id}
-                            </span>
-                            <PieChart size={18} color="#94a3b8" />
-                        </div>
-                        <h2 style={{ margin: '15px 0 5px 0' }}>${stat.totalAmount.toFixed(2)}</h2>
-                        <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>{stat.itemCount} items purchased</p>
-                        
-                        {/* Simple Progress Bar for Visuals */}
-                        <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '10px', marginTop: '15px', overflow: 'hidden' }}>
-                            <div style={{ 
-                                width: `${(stat.totalAmount / grandTotal) * 100}%`, 
-                                height: '100%', 
-                                background: '#22c55e' 
-                            }}></div>
-                        </div>
-                    </div>
-                )) : (
-                    <p>No data available yet. Add some items to your trips!</p>
-                )}
-            </div>
-        </div>
-    );
+  return <section>
+    <div className="hero"><div><span className="eyebrow">YOUR MONEY, YOUR DATA</span><h1>Spending reports</h1><p>Understand your grocery spending without losing track of the basics.</p></div><BarChart3 size={42}/></div>
+    {error && <div className="error page-message">{error}</div>}
+    <div className="stats-grid">
+      <div className="card stat"><Receipt/><span>Total spent</span><strong>{money(grandTotal)}</strong></div>
+      <div className="card stat"><ShoppingBasket/><span>Trips</span><strong>{summary.tripCount}</strong></div>
+      <div className="card stat"><ShoppingBasket/><span>Items</span><strong>{summary.itemCount}</strong></div>
+    </div>
+    <div className="card report-card"><h2>By category</h2>{stats.length === 0 ? <p className="muted">No purchases recorded yet.</p> : stats.map(stat => {
+      const percent = grandTotal > 0 ? (Number(stat.totalAmount) / grandTotal) * 100 : 0;
+      return <div className="report-row" key={stat._id}><div className="report-label"><span>{stat._id}</span><strong>{money(stat.totalAmount)}</strong></div><div className="progress"><div style={{width:`${percent}%`}}/></div><small>{stat.itemCount} line item{stat.itemCount === 1 ? '' : 's'} · {percent.toFixed(1)}%</small></div>;
+    })}</div>
+  </section>;
 };
-
 export default Reports;
