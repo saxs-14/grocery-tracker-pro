@@ -1,16 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/authMiddleware'); // Import protector
-const { 
-    createTrip, getTrips, deleteTrip, 
-    addItemToTrip, updateItemInTrip, deleteItemFromTrip 
+const { protect } = require('../middleware/authMiddleware');
+const {
+    createTrip, getTrips, getTrip, deleteTrip,
+    addItemToTrip, updateItemInTrip, deleteItemFromTrip
 } = require('../controllers/tripController');
 
-// All routes now require the 'protect' middleware
-router.route('/').get(protect, getTrips).post(protect, createTrip);
-router.route('/:id').delete(protect, deleteTrip);
-
-router.route('/:id/items').post(protect, addItemToTrip);
-router.route('/:id/items/:itemId').put(protect, updateItemInTrip).delete(protect, deleteItemFromTrip);
+router.use(protect);
+router.route('/').get(getTrips).post(createTrip);
+router.route('/:id').get(getTrip).delete(deleteTrip);
+router.route('/:id/items').post(addItemToTrip);
+router.route('/:id/items/:itemId').put(updateItemInTrip).delete(deleteItemFromTrip);
 
 module.exports = router;
