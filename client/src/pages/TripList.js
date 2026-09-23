@@ -1,49 +1,61 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getTrips, createTrip, deleteTrip } from '../services/api';
-import { Trash2, PlusCircle, Eye } from 'lucide-react';
+import { Trash2, Eye, Plus } from 'lucide-react';
+
+const money = (value) => `R ${Number(value || 0).toFixed(2)}`;
 
 const TripList = () => {
   const [trips, setTrips] = useState([]);
   const [storeName, setStoreName] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  const fetchTrips = async () => {
+    try { setError(''); const { data } = await getTrips(); setTrips(data); }
+    catch (err) { setError(err.response?.data?.message || 'Could not load your trips.'); }
+    finally { setLoading(false); }
+  };
 
   useEffect(() => { fetchTrips(); }, []);
 
-  const fetchTrips = async () => {
-    const { data } = await getTrips();
-    setTrips(data);
-  };
-
   const handleCreateTrip = async (e) => {
     e.preventDefault();
-    if (!storeName) return;
-    await createTrip({ storeName });
-    setStoreName('');
-    fetchTrips();
+    if (!storeName.trim()) return;
+    try {
+      await createTrip({ storeName: storeName.trim(), date });
+      setStoreName('');
+      fetchTrips();
+    } catch (err) { setError(err.response?.data?.message || 'Could not create trip.'); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this grocery trip and all its items?')) return;
+    try { await deleteTrip(id); fetchTrips(); }
+    catch (err) { setError(err.response?.data?.message || 'Could not delete trip.'); }
   };
 
   return (
-    <div style={{ padding: '0 40px', maxWidth: '800px', margin: '0 auto' }}>
-      <h1>🛒 Grocery Tracker Pro</h1>
-      <form onSubmit={handleCreateTrip} style={{ marginBottom: '30px', display: 'flex', gap: '10px' }}>
-        <input type="text" placeholder="Enter Store Name" value={storeName} onChange={(e) => setStoreName(e.target.value)} style={{ padding: '10px', flex: 1 }} />
-        <button type="submit" style={{ padding: '10px 20px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '5px' }}>Create Trip</button>
+    <section>
+      <div className="hero">
+        <div><span className="eyebrow">PERSONAL GROCERY CONTROL</span><h1>Your grocery trips</h1><p>Record what you buy and see exactly what each trip costs.</p></div>
+      </div>
+      <form className="card create-form" onSubmit={handleCreateTrip}>
+        <div className="form-grow"><label>Store</label><input maxLength="120" placeholder="e.g. Shoprite, Checkers, Pick n Pay" value={storeName} onChange={e => setStoreName(e.target.value)} required /></div>
+        <div><label>Date</label><input type="date" value={date} onChange={e => setDate(e.target.value)} required /></div>
+        <button className="primary-button" type="submit"><Plus size={18}/> New trip</button>
       </form>
-
-      {trips.map((trip) => (
-        <div key={trip._id} style={{ border: '1px solid #ddd', padding: '15px', borderRadius: '8px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h3>{trip.storeName}</h3>
-            <p>Total: ${trip.totalSpent.toFixed(2)}</p>
-          </div>
-          <div style={{ display: 'flex', gap: '15px' }}>
-            <Link to={`/trip/${trip._id}`} style={{ color: '#007bff' }}><Eye size={24} /></Link>
-            <button onClick={() => deleteTrip(trip._id).then(fetchTrips)} style={{ background: 'none', border: 'none', color: '#dc3545' }}><Trash2 size={24} /></button>
-          </div>
-        </div>
-      ))}
-    </div>
+      {error && <div className="error page-message">{error}</div>}
+      {loading ? <div className="empty">Loading your trips…</div> : trips.length === 0 ? <div className="empty card"><h3>No trips yet</h3><p>Create your first grocery trip above.</p></div> : (
+        <div className="trip-grid">{trips.map(trip => (
+          <article className="card trip-card" key={trip._id}>
+            <div><span className="date">{new Date(trip.date).toLocaleDateString('en-ZA')}</span><h3>{trip.storeName}</h3><p>{trip.items.length} item{trip.items.length === 1 ? '' : 's'}</p></div>
+            <div className="trip-actions"><strong>{money(trip.totalSpent)}</strong><Link className="icon-button" title="Open trip" to={`/trip/${trip._id}`}><Eye size={19}/></Link><button className="icon-button danger" title="Delete trip" onClick={() => handleDelete(trip._id)}><Trash2 size={19}/></button></div>
+          </article>
+        ))}</div>
+      )}
+    </section>
   );
 };
-
 export default TripList;
