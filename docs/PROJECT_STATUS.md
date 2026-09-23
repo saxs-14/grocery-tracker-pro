@@ -21,7 +21,9 @@ The project has been upgraded from a basic CRUD prototype into a real authentica
 - [x] Responsive UI and client error handling.
 - [x] Production API health endpoint.
 - [x] Environment-variable documentation.
-- [x] Node test script foundation.
+- [x] Backend Node test script.
+- [x] Frontend test and production-build scripts.
+- [x] GitHub Actions CI workflow for backend tests and frontend tests/build.
 
 ## Still required before calling it production-deployed
 
