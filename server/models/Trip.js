@@ -1,36 +1,26 @@
 const mongoose = require('mongoose');
 
 const ItemSchema = new mongoose.Schema({
-    name: { type: String, required: true },
-    price: { type: Number, required: true, default: 0 },
-    quantity: { type: Number, required: true, default: 1 },
-    category: { 
-        type: String, 
-        enum: ['Food', 'Drinks', 'Toiletries', 'Other'], 
-        default: 'Other' 
+    name: { type: String, required: true, trim: true, maxlength: 120 },
+    price: { type: Number, required: true, min: 0 },
+    quantity: { type: Number, required: true, min: 0.01, default: 1 },
+    category: {
+        type: String,
+        enum: ['Food', 'Drinks', 'Toiletries', 'Household', 'Other'],
+        default: 'Other'
     }
 });
 
 const TripSchema = new mongoose.Schema({
-    storeName: { type: String, required: true },
+    storeName: { type: String, required: true, trim: true, maxlength: 120 },
     date: { type: Date, default: Date.now },
-    items: [ItemSchema], // This is our embedded array
-    totalSpent: { type: Number, default: 0 },
-    userId: { type: String, required: false }
+    items: [ItemSchema],
+    totalSpent: { type: Number, default: 0, min: 0 },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true }
 }, { timestamps: true });
 
-// Middleware to calculate totalSpent before saving
-// We use a regular function (not arrow function) so we can use 'this'
-TripSchema.pre('save', function() {
-    if (this.items && this.items.length > 0) {
-        this.totalSpent = this.items.reduce((acc, item) => {
-            return acc + (item.price * item.quantity);
-        }, 0);
-    } else {
-        this.totalSpent = 0;
-    }
-    // In modern Mongoose, if you don't accept 'next' as a parameter, 
-    // you don't need to call it!
+TripSchema.pre('save', function () {
+    this.totalSpent = this.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 });
 
 module.exports = mongoose.model('Trip', TripSchema);
