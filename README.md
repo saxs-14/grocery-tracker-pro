@@ -1,3 +1,5 @@
+<p align="center"><img src=".github/assets/banner.svg" width="100%" alt="Grocery Tracker Pro banner"/></p>
+
 # Grocery Tracker Pro
 
 A real, account-based grocery spending tracker built for practical everyday use.
